@@ -6,7 +6,7 @@
 // openapi/openapi/spec3.json
 // DO NOT EDIT!
 
-package main
+package core
 
 import (
 	"bytes"
@@ -203,10 +203,10 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"cert/cert.pem": certCertPem,
-	"cert/key.pem": certKeyPem,
+	"cert/cert.pem":                  certCertPem,
+	"cert/key.pem":                   certKeyPem,
 	"openapi/openapi/fixtures3.json": openapiOpenapiFixtures3Json,
-	"openapi/openapi/spec3.json": openapiOpenapiSpec3Json,
+	"openapi/openapi/spec3.json":     openapiOpenapiSpec3Json,
 }
 
 // AssetDir returns the file names below a certain
@@ -248,15 +248,16 @@ type bintree struct {
 	Func     func() (*asset, error)
 	Children map[string]*bintree
 }
+
 var _bintree = &bintree{nil, map[string]*bintree{
 	"cert": &bintree{nil, map[string]*bintree{
 		"cert.pem": &bintree{certCertPem, map[string]*bintree{}},
-		"key.pem": &bintree{certKeyPem, map[string]*bintree{}},
+		"key.pem":  &bintree{certKeyPem, map[string]*bintree{}},
 	}},
 	"openapi": &bintree{nil, map[string]*bintree{
 		"openapi": &bintree{nil, map[string]*bintree{
 			"fixtures3.json": &bintree{openapiOpenapiFixtures3Json, map[string]*bintree{}},
-			"spec3.json": &bintree{openapiOpenapiSpec3Json, map[string]*bintree{}},
+			"spec3.json":     &bintree{openapiOpenapiSpec3Json, map[string]*bintree{}},
 		}},
 	}},
 }}
@@ -307,4 +308,3 @@ func _filePath(dir, name string) string {
 	cannonicalName := strings.Replace(name, "\\", "/", -1)
 	return filepath.Join(append([]string{dir}, strings.Split(cannonicalName, "/")...)...)
 }
-
