@@ -247,7 +247,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options := getDefaultOptions()
 		options.Http = true
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.NoError(t, err)
 	}
 
@@ -255,7 +255,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options := getDefaultOptions()
 		options.Https = true
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.NoError(t, err)
 	}
 
@@ -264,7 +264,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Https = true
 		options.Port = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.NoError(t, err)
 	}
 
@@ -273,7 +273,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpPort = 12111
 		options.HttpsPort = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.NoError(t, err)
 	}
 
@@ -282,7 +282,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpUnixSocket = "/tmp/stripe-mock.sock"
 		options.HttpsUnixSocket = "/tmp/stripe-mock-secure.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.NoError(t, err)
 	}
 
@@ -295,7 +295,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Port = 12111
 		options.UnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please specify only one of -port or -unix"), err)
 	}
 
@@ -308,7 +308,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Http = true
 		options.HttpPort = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -http when using -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -317,7 +317,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Http = true
 		options.HttpUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -http when using -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -326,7 +326,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Port = 12111
 		options.HttpPort = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -port or -unix when using -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -335,7 +335,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.UnixSocket = "/tmp/stripe-mock.sock"
 		options.HttpUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -port or -unix when using -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -344,7 +344,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpAddr = "127.0.0.1:12111"
 		options.HttpUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please specify only one of -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -353,7 +353,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpPort = 12111
 		options.HttpUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please specify only one of -http-addr, -http-port, or -http-unix"), err)
 	}
 
@@ -366,7 +366,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Https = true
 		options.HttpsPort = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -https when using -https-addr, -https-port, or -https-unix"), err)
 	}
 
@@ -375,7 +375,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Https = true
 		options.HttpsUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -https when using -https-addr, -https-port, or -https-unix"), err)
 	}
 
@@ -384,7 +384,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.Port = 12111
 		options.HttpsPort = 12111
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -port or -unix when using -https-addr, -https-port, or -https-unix"), err)
 	}
 
@@ -393,7 +393,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.UnixSocket = "/tmp/stripe-mock.sock"
 		options.HttpsUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please don't specify -port or -unix when using -https-addr, -https-port, or -https-unix"), err)
 	}
 
@@ -402,7 +402,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpsAddr = "127.0.0.1:12111"
 		options.HttpsUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please specify only one of -https-addr, -https-port, or -https-unix"), err)
 	}
 
@@ -411,7 +411,7 @@ func TestCheckConflictingOptions(t *testing.T) {
 		options.HttpsPort = 12111
 		options.HttpsUnixSocket = "/tmp/stripe-mock.sock"
 
-		err := options.CheckConflictingOptions()
+		err := options.checkConflictingOptions()
 		assert.Equal(t, fmt.Errorf("Please specify only one of -https-addr, -https-port, or -https-unix"), err)
 	}
 }
@@ -425,7 +425,7 @@ func TestOptionsGetHTTPListener(t *testing.T) {
 		options := &Options{
 			HttpAddr: fmt.Sprintf(":%v", freePort),
 		}
-		listener, err := options.GetHTTPListener()
+		listener, err := options.getHTTPListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()
@@ -436,7 +436,7 @@ func TestOptionsGetHTTPListener(t *testing.T) {
 		options := &Options{
 			HttpPort: freePort,
 		}
-		listener, err := options.GetHTTPListener()
+		listener, err := options.getHTTPListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()
@@ -448,7 +448,7 @@ func TestOptionsGetHTTPListener(t *testing.T) {
 			HttpPort:  -1, // Signals not specified
 			HttpsPort: freePort,
 		}
-		listener, err := options.GetHTTPListener()
+		listener, err := options.getHTTPListener()
 		assert.NoError(t, err)
 		assert.Nil(t, listener)
 	}
@@ -458,7 +458,7 @@ func TestOptionsGetHTTPListener(t *testing.T) {
 		options := &Options{
 			HttpPortDefault: freePort,
 		}
-		listener, err := options.GetHTTPListener()
+		listener, err := options.getHTTPListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()
@@ -471,7 +471,7 @@ func TestOptionsGetNonSecureHTTPSListener(t *testing.T) {
 		options := &Options{
 			HttpsAddr: fmt.Sprintf(":%v", freePort),
 		}
-		listener, err := options.GetNonSecureHTTPSListener()
+		listener, err := options.getNonSecureHTTPSListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()
@@ -482,7 +482,7 @@ func TestOptionsGetNonSecureHTTPSListener(t *testing.T) {
 		options := &Options{
 			HttpsPort: freePort,
 		}
-		listener, err := options.GetNonSecureHTTPSListener()
+		listener, err := options.getNonSecureHTTPSListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()
@@ -494,7 +494,7 @@ func TestOptionsGetNonSecureHTTPSListener(t *testing.T) {
 			HttpPort:  freePort,
 			HttpsPort: -1, // Signals not specified
 		}
-		listener, err := options.GetNonSecureHTTPSListener()
+		listener, err := options.getNonSecureHTTPSListener()
 		assert.NoError(t, err)
 		assert.Nil(t, listener)
 	}
@@ -506,7 +506,7 @@ func TestOptionsGetNonSecureHTTPSListener(t *testing.T) {
 			HttpsPort: -1, // Signals not specified
 			Port:      freePort,
 		}
-		listener, err := options.GetNonSecureHTTPSListener()
+		listener, err := options.getNonSecureHTTPSListener()
 		assert.NoError(t, err)
 		assert.Nil(t, listener)
 	}
@@ -516,7 +516,7 @@ func TestOptionsGetNonSecureHTTPSListener(t *testing.T) {
 		options := &Options{
 			HttpsPortDefault: freePort,
 		}
-		listener, err := options.GetNonSecureHTTPSListener()
+		listener, err := options.getNonSecureHTTPSListener()
 		assert.NoError(t, err)
 		assert.NotNil(t, listener)
 		listener.Close()

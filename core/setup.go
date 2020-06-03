@@ -1,10 +1,13 @@
 //go:generate go-bindata -mode 444 -modtime 1 cert/cert.pem cert/key.pem openapi/openapi/fixtures3.json openapi/openapi/spec3.json
 
+// TODO(bwang): consider renaming core to something more descriptive (perhaps 'server'?)
 package core
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -29,150 +32,51 @@ var version = "master"
 
 // ---
 
-// TODO(bwang): we need a fuller set of operations that can be invoked programatically on stripe-mock: stopping the server should likely be one of them
-func stopMockServer() {
+//
+// Public-facing structs
+//
 
+// TODO: add tests here (in setup_tests.go)
+type stripeMock struct {
+	serverOptions Options
+	server        *http.Server
 }
 
-// TODO(bwang): method signature
-// TODO: options still has CLI-specific fields. Consider whether any changes are necessary, No - because strippwde-cli will also provide the same CLI interface.
-// TODO: currently this acts a CLI interface, by printing things out to stderr -- BUT if we want this to be used as a library, then this won't be appropriate
-func StartMockServer(options Options) {
-	err := options.CheckConflictingOptions()
+func NewStripeMock(serverOptions Options) (stripeMock, error) {
+	err := serverOptions.checkConflictingOptions()
 
 	// TODO(bwang):
 	if err != nil {
-		abort(fmt.Sprintf("Invalid options: %v", err))
+		errorMsg := fmt.Sprintf("Invalid options: %v", err)
+		return stripeMock{}, errors.New(errorMsg)
 	}
 
-	StartMockServerInternal(options)
+	return stripeMock{serverOptions: serverOptions}, nil
+
 }
 
-// TODO(bwang): shared code that implements starting mock server - does not include specific interface code
-func StartMockServerInternal(options Options) {
-	options.HttpPortDefault = DefaultPortHTTP
-	options.HttpsPortDefault = DefaultPortHTTPS
+func (mock *stripeMock) Start() (err error) {
+	fmt.Println("Starting mock server.")
 
-	// TODO(bwang): how to reimplemt default ports
-	// options := options{
-	// 	httpPortDefault:  DefaultPortHTTP,
-	// 	httpsPortDefault: DefaultPortHTTPS,
-	// }
+	server, err := startMockServer(mock.serverOptions)
 
-	// As you can probably tell, there are just too many HTTP/HTTPS binding
-	// options, which is a result of me not thinking through the original
-	// interface well enough.
-	//
-	// I've left them all in place for now for backwards compatibility, but we
-	// should probably deprecate `-http-port`, `-https-port`, `-port`, and
-	// `-unix` in favor of the remaining more expressive and more versatile
-	// alternatives.
-	//
-	// Eventually, `-http` and `-https` could become shorthand synonyms for
-	// `-http-addr` and `-https-addr`.
-
-	// For both spec and fixtures stripe-mock will by default load data from
-	// internal assets compiled into the binary, but either one can be
-	// overridden with a -spec or -fixtures argument and a path to a file.
-	stripeSpec, err := getSpec(options.SpecPath)
 	if err != nil {
-		abort(err.Error())
+		mock.server = server
+		return nil
+	} else {
+		return err
 	}
 
-	fixtures, err := getFixtures(options.FixturesPath)
-	if err != nil {
-		abort(err.Error())
-	}
-
-	stub := StubServer{
-		fixtures:           fixtures,
-		spec:               stripeSpec,
-		strictVersionCheck: options.StrictVersionCheck,
-	}
-	err = stub.initializeRouter()
-	if err != nil {
-		abort(fmt.Sprintf("Error initializing router: %v\n", err))
-	}
-
-	httpMux := http.NewServeMux()
-	httpMux.HandleFunc("/", stub.HandleRequest)
-
-	// Deduplicates doubled slashes in paths. e.g. `//v1/charges` becomes
-	// `/v1/charges`.
-	handler := &DoubleSlashFixHandler{httpMux}
-
-	httpListener, err := options.GetHTTPListener()
-	if err != nil {
-		abort(err.Error())
-	}
-
-	// Only start HTTP if requested (it will activate by default with no arguments, but it won't start if
-	// HTTPS is explicitly requested and HTTP is not).
-	if httpListener != nil {
-		server := http.Server{
-			Handler: handler,
-		}
-
-		// Listen in a new Goroutine that so we can start a simultaneous HTTPS
-		// listener if necessary.
-		go func() {
-			err := server.Serve(httpListener)
-			if err != nil {
-				abort(err.Error())
-			}
-		}()
-	}
-
-	httpsListener, err := options.GetNonSecureHTTPSListener()
-	if err != nil {
-		abort(err.Error())
-	}
-
-	// Only start HTTPS if requested (it will activate by default with no
-	// arguments, but it won't start if HTTP is explicitly requested and HTTPS
-	// is not).
-	if httpsListener != nil {
-		// Our self-signed certificate is bundled up using go-bindata so that
-		// it stays easy to distribute stripe-mock as a standalone binary with
-		// no other dependencies.
-		certificate, err := getTLSCertificate()
-		if err != nil {
-			abort(err.Error())
-		}
-
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{certificate},
-
-			// h2 is HTTP/2. A server with a default config normally doesn't
-			// need this hint, but Go is somewhat inflexible, and we need this
-			// here because we're using `Serve` and reading a TLS certificate
-			// from memory instead of using `ServeTLS` which would've read a
-			// certificate from file.
-			NextProtos: []string{"h2"},
-		}
-
-		server := http.Server{
-			Handler:   handler,
-			TLSConfig: tlsConfig,
-		}
-		tlsListener := tls.NewListener(httpsListener, tlsConfig)
-
-		go func() {
-			err := server.Serve(tlsListener)
-			if err != nil {
-				abort(err.Error())
-			}
-		}()
-	}
-
-	// Block forever. The serve Goroutines above will abort the program if
-	// either of them fails.
-	select {}
 }
 
-//
-// Private types
-//
+func (mock *stripeMock) Stop() {
+	// TODO: wait on cleanup like in https://stackoverflow.com/questions/39320025/how-to-stop-http-listenandserve
+	// 			by using a sync.WaitGroup?
+	fmt.Println("Stopping mock server.")
+	if err := mock.server.Shutdown(context.TODO()); err != nil {
+		panic(err)
+	}
+}
 
 // TODO(bwang): no longer a private type
 // Options is a container for the command line options passed to stripe-mock.
@@ -198,7 +102,7 @@ type Options struct {
 	UnixSocket         string
 }
 
-func (o *Options) CheckConflictingOptions() error {
+func (o *Options) checkConflictingOptions() error {
 	if o.UnixSocket != "" && o.Port != -1 {
 		return fmt.Errorf("Please specify only one of -port or -unix")
 	}
@@ -264,7 +168,7 @@ func (o *Options) CheckConflictingOptions() error {
 
 // getHTTPListener gets a listener on a port or unix socket depending on the
 // options provided. If HTTP should not be enabled, it returns nil.
-func (o *Options) GetHTTPListener() (net.Listener, error) {
+func (o *Options) getHTTPListener() (net.Listener, error) {
 	protocol := "HTTP"
 
 	if o.HttpAddr != "" {
@@ -296,10 +200,10 @@ func (o *Options) GetHTTPListener() (net.Listener, error) {
 	return getPortListenerDefault(o.HttpPortDefault, protocol)
 }
 
-// GetNonSecureHTTPSListener gets a basic listener on a port or unix socket
+// getNonSecureHTTPSListener gets a basic listener on a port or unix socket
 // depending on the options provided. Its return listener must still be wrapped
 // in a TLSListener. If HTTPS should not be enabled, it returns nil.
-func (o *Options) GetNonSecureHTTPSListener() (net.Listener, error) {
+func (o *Options) getNonSecureHTTPSListener() (net.Listener, error) {
 	protocol := "HTTPS"
 
 	if o.HttpsAddr != "" {
@@ -337,7 +241,6 @@ func (o *Options) GetNonSecureHTTPSListener() (net.Listener, error) {
 // Private functions
 //
 
-// TODO(bwang): no longer private
 func abort(message string) {
 	fmt.Fprintf(os.Stderr, message)
 	os.Exit(1)
@@ -454,4 +357,132 @@ func getUnixSocketListener(unixSocket, protocol string) (net.Listener, error) {
 // file.
 func isJSONFile(path string) bool {
 	return strings.ToLower(filepath.Ext(path)) == ".json"
+}
+
+func startMockServer(options Options) (server *http.Server, err error) {
+	options.HttpPortDefault = DefaultPortHTTP
+	options.HttpsPortDefault = DefaultPortHTTPS
+
+	// TODO(bwang): how to reimplemt default ports
+	// options := options{
+	// 	httpPortDefault:  DefaultPortHTTP,
+	// 	httpsPortDefault: DefaultPortHTTPS,
+	// }
+
+	// As you can probably tell, there are just too many HTTP/HTTPS binding
+	// options, which is a result of me not thinking through the original
+	// interface well enough.
+	//
+	// I've left them all in place for now for backwards compatibility, but we
+	// should probably deprecate `-http-port`, `-https-port`, `-port`, and
+	// `-unix` in favor of the remaining more expressive and more versatile
+	// alternatives.
+	//
+	// Eventually, `-http` and `-https` could become shorthand synonyms for
+	// `-http-addr` and `-https-addr`.
+
+	// For both spec and fixtures stripe-mock will by default load data from
+	// internal assets compiled into the binary, but either one can be
+	// overridden with a -spec or -fixtures argument and a path to a file.
+	stripeSpec, err := getSpec(options.SpecPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fixtures, err := getFixtures(options.FixturesPath)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	stub := StubServer{
+		fixtures:           fixtures,
+		spec:               stripeSpec,
+		strictVersionCheck: options.StrictVersionCheck,
+	}
+	err = stub.initializeRouter()
+	if err != nil {
+		fmt.Printf("Error initializing router: %v\n", err)
+		return nil, err
+	}
+
+	httpMux := http.NewServeMux()
+	httpMux.HandleFunc("/", stub.HandleRequest)
+
+	// Deduplicates doubled slashes in paths. e.g. `//v1/charges` becomes
+	// `/v1/charges`.
+	handler := &DoubleSlashFixHandler{httpMux}
+
+	httpListener, err := options.getHTTPListener()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	// Only start HTTP if requested (it will activate by default with no arguments, but it won't start if
+	// HTTPS is explicitly requested and HTTP is not).
+	if httpListener != nil {
+		server := http.Server{
+			Handler: handler,
+		}
+
+		// Listen in a new Goroutine that so we can start a simultaneous HTTPS
+		// listener if necessary.
+		go func() {
+			err := server.Serve(httpListener)
+			if err != nil && err != http.ErrServerClosed {
+				abort(err.Error())
+			}
+		}()
+
+		return &server, nil
+	}
+
+	httpsListener, err := options.getNonSecureHTTPSListener()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	// Only start HTTPS if requested (it will activate by default with no
+	// arguments, but it won't start if HTTP is explicitly requested and HTTPS
+	// is not).
+	if httpsListener != nil {
+		// Our self-signed certificate is bundled up using go-bindata so that
+		// it stays easy to distribute stripe-mock as a standalone binary with
+		// no other dependencies.
+		certificate, err := getTLSCertificate()
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{certificate},
+
+			// h2 is HTTP/2. A server with a default config normally doesn't
+			// need this hint, but Go is somewhat inflexible, and we need this
+			// here because we're using `Serve` and reading a TLS certificate
+			// from memory instead of using `ServeTLS` which would've read a
+			// certificate from file.
+			NextProtos: []string{"h2"},
+		}
+
+		server := http.Server{
+			Handler:   handler,
+			TLSConfig: tlsConfig,
+		}
+		tlsListener := tls.NewListener(httpsListener, tlsConfig)
+
+		go func() {
+			err := server.Serve(tlsListener)
+			if err != nil && err != http.ErrServerClosed {
+				abort(err.Error())
+			}
+		}()
+
+		return &server, nil
+	}
+
+	return nil, errors.New("Error: reached unexpected state when starting stripe-mock server.")
 }

@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/stripe/stripe-mock/core"
 )
@@ -56,13 +57,17 @@ func main() {
 		return
 	}
 
-	// err := options.CheckConflictingOptions()
-	// if err != nil {
-	// 	flag.Usage()
-	// 	core.Abort(fmt.Sprintf("Invalid options: %v", err))
-	// }
+	stripeMock, err := core.NewStripeMock(options)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-	fmt.Println(options)
-	core.StartMockServer(options)
+	if err := stripeMock.Start(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
+	// Block forever. The program will aborted if there are errors with the goroutines serving incoming connections.
+	select {}
 }
