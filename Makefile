@@ -1,10 +1,11 @@
 GIT_COMMITSHA = $(shell git rev-parse HEAD)
-IMAGE_NAME = "stripemock/stripe-mock"
+IMAGE_NAME = "jaguar-mock"
 
 all: test vet lint check-gofmt build
 
 build:
-	go build -mod=vendor -o stripe-mock
+	env GOOS=linux GOARCH=amd64 go build -mod=vendor -o jaguar-mock
+	#go build -mod=vendor -o jaguar-mock
 
 check-gofmt:
 	scripts/check_gofmt.sh
